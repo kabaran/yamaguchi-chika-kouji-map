@@ -51,6 +51,12 @@ function yen(n) {
   return n.toLocaleString('ja-JP') + ' 円/m²';
 }
 
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
 fetch('yamaguchi_chika_kouji.geojson')
   .then(r => r.json())
   .then(data => {
@@ -69,18 +75,18 @@ fetch('yamaguchi_chika_kouji.geojson')
         const p = feature.properties;
         const [lng, lat] = feature.geometry.coordinates;
         let historyRows = p.history.slice().reverse().map(h =>
-          `<tr><td>${h.year}年</td><td>${yen(h.price)}</td></tr>`
+          `<tr><td>${esc(h.year)}年</td><td>${esc(yen(h.price))}</td></tr>`
         ).join('');
 
         const html = `
-          <div class="popup-title">${p.city} ${p.residence_display || ''}</div>
-          <div>${p.address}</div>
-          <div>用途：${p.usage} ／ 地積：${p.area_m2 ?? '-'} m²</div>
-          <div>最寄駅：${p.nearest_station || '-'}（約${p.station_distance_m ?? '-'}m）</div>
-          <div><b>2025年公示価格：${yen(p.price_2025 || 0)}</b>（対前年 ${p.change_rate > 0 ? '+' : ''}${p.change_rate}%）</div>
-          <div>${p.surroundings || ''}</div>
+          <div class="popup-title">${esc(p.city)} ${esc(p.residence_display || '')}</div>
+          <div>${esc(p.address)}</div>
+          <div>用途：${esc(p.usage)} ／ 地積：${esc(p.area_m2 ?? '-')} m²</div>
+          <div>最寄駅：${esc(p.nearest_station || '-')}（約${esc(p.station_distance_m ?? '-')}m）</div>
+          <div><b>2025年公示価格：${esc(yen(p.price_2025 || 0))}</b>（対前年 ${p.change_rate > 0 ? '+' : ''}${esc(p.change_rate)}%）</div>
+          <div>${esc(p.surroundings || '')}</div>
           <div style="margin-top:6px;">
-            <a href="https://www.google.com/maps?layer=c&cbll=${lat},${lng}" target="_blank" rel="noopener noreferrer">📷 ストリートビューで見る</a>
+            <a href="https://www.google.com/maps?layer=c&cbll=${encodeURIComponent(lat)},${encodeURIComponent(lng)}" target="_blank" rel="noopener noreferrer">📷 ストリートビューで見る</a>
           </div>
           <div class="history-wrap">
             <table class="popup-table">${historyRows}</table>
