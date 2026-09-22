@@ -67,6 +67,7 @@ fetch('yamaguchi_chika_kouji.geojson')
       },
       onEachFeature: function (feature, layer) {
         const p = feature.properties;
+        const [lng, lat] = feature.geometry.coordinates;
         let historyRows = p.history.slice().reverse().map(h =>
           `<tr><td>${h.year}年</td><td>${yen(h.price)}</td></tr>`
         ).join('');
@@ -78,6 +79,9 @@ fetch('yamaguchi_chika_kouji.geojson')
           <div>最寄駅：${p.nearest_station || '-'}（約${p.station_distance_m ?? '-'}m）</div>
           <div><b>2025年公示価格：${yen(p.price_2025 || 0)}</b>（対前年 ${p.change_rate > 0 ? '+' : ''}${p.change_rate}%）</div>
           <div>${p.surroundings || ''}</div>
+          <div style="margin-top:6px;">
+            <a href="https://www.google.com/maps?layer=c&cbll=${lat},${lng}" target="_blank" rel="noopener noreferrer">📷 ストリートビューで見る</a>
+          </div>
           <div class="history-wrap">
             <table class="popup-table">${historyRows}</table>
           </div>
