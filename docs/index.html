@@ -83,6 +83,7 @@ fetch('yamaguchi_chika_kouji.geojson')
           <div>${esc(p.address)}</div>
           <div>用途：${esc(p.usage)} ／ 地積：${esc(p.area_m2 ?? '-')} m²</div>
           <div>最寄駅：${esc(p.nearest_station || '-')}（約${esc(p.station_distance_m ?? '-')}m）</div>
+          <div>接面道路幅員：${esc(p.road_width_m ?? '-')} m</div>
           <div><b>2025年公示価格：${esc(yen(p.price_2025 || 0))}</b>（対前年 ${p.change_rate > 0 ? '+' : ''}${esc(p.change_rate)}%）</div>
           <div>${esc(p.surroundings || '')}</div>
           <div style="margin-top:6px;">
