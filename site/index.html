@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>山口県 地価公示マップ（2025年）</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H"
+  crossorigin="anonymous" />
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif; }
+  header { padding: 10px 16px; background: #f5f5f5; border-bottom: 1px solid #ddd; }
+  header h1 { margin: 0; font-size: 1.05rem; }
+  header p { margin: 4px 0 0; font-size: 0.8rem; color: #555; }
+  #map { position: absolute; top: 64px; left: 0; right: 0; bottom: 0; }
+  .legend { background: white; padding: 8px 10px; border-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,.3); font-size: 0.8rem; line-height: 1.5; }
+  .legend span { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+  .popup-title { font-weight: bold; margin-bottom: 4px; }
+  .popup-table { border-collapse: collapse; font-size: 0.8rem; margin-top: 6px; max-height: 150px; overflow-y: auto; display: block; }
+  .popup-table td { padding: 1px 6px 1px 0; }
+  .history-wrap { max-height: 140px; overflow-y: auto; margin-top: 6px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>山口県 地価公示マップ（令和7年 / 2025年）</h1>
+  <p>国土数値情報「地価公示データ（L01）」より。全304地点。各地点をクリックすると1983年〜2025年の価格推移を表示。</p>
+</header>
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+  integrity="sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH"
+  crossorigin="anonymous"></script>
+<script>
+const map = L.map('map').setView([34.15, 131.4], 9);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 18,
+  attribution: '&copy; OpenStreetMap contributors'
+}).addTo(map);
+
+function colorByPrice(price) {
+  if (price >= 100000) return '#08306b';
+  if (price >= 60000)  return '#2171b5';
+  if (price >= 30000)  return '#6baed6';
+  if (price >= 15000)  return '#c6dbef';
+  return '#f7fbff';
+}
+
+function yen(n) {
+  return n.toLocaleString('ja-JP') + ' 円/m²';
+}
+
+fetch('yamaguchi_chika_kouji.geojson')
+  .then(r => r.json())
+  .then(data => {
+    L.geoJSON(data, {
+      pointToLayer: function (feature, latlng) {
+        const p = feature.properties;
+        return L.circleMarker(latlng, {
+          radius: 6,
+          fillColor: colorByPrice(p.price_2025 || 0),
+          color: '#333',
+          weight: 1,
+          fillOpacity: 0.85
+        });
+      },
+      onEachFeature: function (feature, layer) {
+        const p = feature.properties;
+        let historyRows = p.history.slice().reverse().map(h =>
+          `<tr><td>${h.year}年</td><td>${yen(h.price)}</td></tr>`
+        ).join('');
+
+        const html = `
+          <div class="popup-title">${p.city} ${p.residence_display || ''}</div>
+          <div>${p.address}</div>
+          <div>用途：${p.usage} ／ 地積：${p.area_m2 ?? '-'} m²</div>
+          <div>最寄駅：${p.nearest_station || '-'}（約${p.station_distance_m ?? '-'}m）</div>
+          <div><b>2025年公示価格：${yen(p.price_2025 || 0)}</b>（対前年 ${p.change_rate > 0 ? '+' : ''}${p.change_rate}%）</div>
+          <div>${p.surroundings || ''}</div>
+          <div class="history-wrap">
+            <table class="popup-table">${historyRows}</table>
+          </div>
+        `;
+        layer.bindPopup(html, { maxWidth: 280 });
+      }
+    }).addTo(map);
+  });
+
+const legend = L.control({ position: 'bottomright' });
+legend.onAdd = function () {
+  const div = L.DomUtil.create('div', 'legend');
+  div.innerHTML = `
+    <b>2025年公示価格（円/m²）</b><br>
+    <span style="background:#08306b"></span>10万以上<br>
+    <span style="background:#2171b5"></span>6万〜10万<br>
+    <span style="background:#6baed6"></span>3万〜6万<br>
+    <span style="background:#c6dbef"></span>1.5万〜3万<br>
+    <span style="background:#f7fbff;border:1px solid #999"></span>1.5万未満
+  `;
+  return div;
+};
+legend.addTo(map);
+</script>
+</body>
+</html>
