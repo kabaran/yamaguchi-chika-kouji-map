@@ -19,6 +19,10 @@
   .popup-table { border-collapse: collapse; font-size: 0.8rem; margin-top: 6px; max-height: 150px; overflow-y: auto; display: block; }
   .popup-table td { padding: 1px 6px 1px 0; }
   .history-wrap { max-height: 140px; overflow-y: auto; margin-top: 6px; }
+  .filter-box { background: white; padding: 8px 10px; border-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,.3); font-size: 0.85rem; }
+  .filter-box input, .filter-box select { display: block; width: 180px; margin-top: 4px; padding: 4px 6px; font-size: 0.85rem; box-sizing: border-box; }
+  .filter-box label { font-weight: bold; }
+  .filter-count { margin-top: 6px; color: #555; font-size: 0.78rem; }
 </style>
 </head>
 <body>
@@ -57,9 +61,14 @@ function esc(s) {
   }[c]));
 }
 
+const markersLayer = L.layerGroup().addTo(map);
+let allMarkers = []; // { layer, city, address }
+
 fetch('yamaguchi_chika_kouji.geojson')
   .then(r => r.json())
   .then(data => {
+    const cities = new Set();
+
     L.geoJSON(data, {
       pointToLayer: function (feature, latlng) {
         const p = feature.properties;
@@ -94,9 +103,69 @@ fetch('yamaguchi_chika_kouji.geojson')
           </div>
         `;
         layer.bindPopup(html, { maxWidth: 280 });
+
+        cities.add(p.city || '');
+        allMarkers.push({ layer, city: p.city || '', address: p.address || '' });
+        markersLayer.addLayer(layer);
       }
-    }).addTo(map);
+    });
+
+    // 市の一覧をドロップダウンに反映（50音順）
+    const citySelect = document.getElementById('city-select');
+    Array.from(cities).sort((a, b) => a.localeCompare(b, 'ja')).forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c;
+      opt.textContent = c;
+      citySelect.appendChild(opt);
+    });
+
+    applyFilter();
   });
+
+function applyFilter() {
+  const city = document.getElementById('city-select').value;
+  const q = document.getElementById('search-input').value.trim();
+  let shown = 0;
+
+  allMarkers.forEach(({ layer, city: c, address }) => {
+    const cityMatch = !city || c === city;
+    const searchMatch = !q || address.includes(q);
+    const visible = cityMatch && searchMatch;
+
+    if (visible) {
+      if (!markersLayer.hasLayer(layer)) markersLayer.addLayer(layer);
+      shown++;
+    } else {
+      if (markersLayer.hasLayer(layer)) markersLayer.removeLayer(layer);
+    }
+  });
+
+  const countEl = document.getElementById('filter-count');
+  if (countEl) countEl.textContent = `${shown} / ${allMarkers.length} 地点を表示中`;
+}
+
+const filterControl = L.control({ position: 'topright' });
+filterControl.onAdd = function () {
+  const div = L.DomUtil.create('div', 'filter-box');
+  div.innerHTML = `
+    <label for="city-select">市で絞り込み</label>
+    <select id="city-select"><option value="">すべての市</option></select>
+    <label for="search-input" style="margin-top:6px; display:block;">住所で検索</label>
+    <input type="text" id="search-input" placeholder="例：山の田、駅名 など">
+    <div class="filter-count" id="filter-count"></div>
+  `;
+  L.DomEvent.disableClickPropagation(div);
+  L.DomEvent.disableScrollPropagation(div);
+  return div;
+};
+filterControl.addTo(map);
+
+document.addEventListener('change', e => {
+  if (e.target && e.target.id === 'city-select') applyFilter();
+});
+document.addEventListener('input', e => {
+  if (e.target && e.target.id === 'search-input') applyFilter();
+});
 
 const legend = L.control({ position: 'bottomright' });
 legend.onAdd = function () {
